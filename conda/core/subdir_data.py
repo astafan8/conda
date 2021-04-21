@@ -175,7 +175,15 @@ class SubdirData(object):
 
     @property
     def url_w_repodata_fn(self):
-        return self.url_w_subdir + '/' + self.repodata_fn
+        parts = self.url_w_subdir.split("?")
+        if len(parts) > 1:
+            parts.insert(-1, "/" + self.repodata_fn)
+            parts.insert(-1, "?")
+        else:
+            parts.append("/" + self.repodata_fn)
+        # return self.url_w_subdir + '/' + self.repodata_fn
+        result = "".join(parts)
+        return result
 
     @property
     def cache_path_json(self):
@@ -496,7 +504,8 @@ def fetch_repodata_remote_request(url, etag, mod_stamp, repodata_fn=REPODATA_FN)
 
     try:
         timeout = context.remote_connect_timeout_secs, context.remote_read_timeout_secs
-        resp = session.get(join_url(url, filename), headers=headers, proxies=session.proxies,
+        the_url = join_url(url, filename)
+        resp = session.get(the_url, headers=headers, proxies=session.proxies,
                            timeout=timeout)
         if log.isEnabledFor(DEBUG):
             log.debug(stringify(resp, content_max_len=256))

@@ -64,7 +64,7 @@ class Channel(object):
         Channel._cache_ = {}
 
     def __init__(self, scheme=None, auth=None, location=None, token=None, name=None,
-                 platform=None, package_filename=None):
+                 platform=None, package_filename=None, query=None):
         self.scheme = scheme
         self.auth = auth
         self.location = location
@@ -72,6 +72,7 @@ class Channel(object):
         self.name = name or ''
         self.platform = platform
         self.package_filename = package_filename
+        self.query = query
 
     @property
     def channel_location(self):
@@ -199,9 +200,15 @@ class Channel(object):
         bases = (join_url(base, p) for p in _platforms())
 
         if with_credentials and self.auth:
-            return ["%s://%s@%s" % (self.scheme, self.auth, b) for b in bases]
+            the_urls = [
+                "%s://%s@%s" % (self.scheme, self.auth, b) for b in bases]
         else:
-            return ["%s://%s" % (self.scheme, b) for b in bases]
+            the_urls = ["%s://%s" % (self.scheme, b) for b in bases]
+
+        if self.query is not None:
+            the_urls = [f"{url}?{self.query}" for url in the_urls]
+
+        return the_urls
 
     def url(self, with_credentials=False):
         if self.canonical_name == UNKNOWN_CHANNEL:
@@ -222,15 +229,23 @@ class Channel(object):
         base = join_url(*base)
 
         if with_credentials and self.auth:
-            return "%s://%s@%s" % (self.scheme, self.auth, base)
+            the_url = "%s://%s@%s" % (self.scheme, self.auth, base)
         else:
-            return "%s://%s" % (self.scheme, base)
+            the_url = "%s://%s" % (self.scheme, base)
+
+        if self.query is not None:
+            the_url = f"{the_url}?{self.query}"
+
+        return the_url
 
     @property
     def base_url(self):
         if self.canonical_name == UNKNOWN_CHANNEL:
             return None
-        return "%s://%s" % (self.scheme, join_url(self.location, self.name))
+        the_url = "%s://%s" % (self.scheme, join_url(self.location, self.name))
+        if self.query is not None:
+            the_url = f"{the_url}?{self.query}"
+        return the_url
 
     @property
     def base_urls(self):
@@ -441,6 +456,7 @@ def _read_channel_configuration(scheme, host, port, path):
     path_parts = path.strip('/').split('/')
     if path_parts and path_parts[0] == 'conda':
         bump, path = 'conda', '/'.join(drop(1, path_parts))
+    # bump is extra stuff on top of host URL to the channel
     return (Url(host=host, port=port, path=bump).url.rstrip('/'), path.strip('/') or None,
             scheme or None, None, None)
 
@@ -463,7 +479,8 @@ def parse_conda_channel_url(url):
                    token or configured_token,
                    channel_name,
                    platform,
-                   package_filename)
+                   package_filename,
+                   query=query)
 
 
 # backward compatibility for conda-build
