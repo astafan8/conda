@@ -5,6 +5,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import codecs
 from getpass import getpass
+from itertools import chain
 from os.path import abspath, expanduser
 import re
 import socket
@@ -225,8 +226,26 @@ def is_ip_address(string_ip):
 
 
 def join(*args):
+    print(f"join_url called with {args!r}")
     start = '/' if not args[0] or args[0].startswith('/') else ''
-    return start + '/'.join(y for y in (x.strip('/') for x in args if x) if y)
+
+    query = None
+    old_args0 = None
+    args_without_query = args
+    if args[0]:
+        parts = args[0].split("?")
+        if len(parts) > 1:
+            query = parts[1]
+            old_args0 = args[0]
+            args_without_query = (parts[0],) + args[1:]
+
+    q = start + '/'.join(y for y in (x.strip('/') for x in args_without_query if x) if y)
+
+    if query is not None:
+        q = q + "?" + query
+
+    print(f"join_url returns {q!r}")
+    return q
 
 
 join_url = join
@@ -291,7 +310,7 @@ def split_platform(known_subdirs, url):
 
 @memoize
 def _split_platform_re(known_subdirs):
-    _platform_match_regex = r'/(%s)(?:/|$)' % r'|'.join(r'%s' % d for d in known_subdirs)
+    _platform_match_regex = r'/(%s)(?:\?|/|$)' % r'|'.join(r'%s' % d for d in known_subdirs)
     return re.compile(_platform_match_regex, re.IGNORECASE)
 
 
